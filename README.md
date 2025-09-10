@@ -24,8 +24,8 @@ An AI-powered FastAPI application that helps students with their Math, Physics, 
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/student-homework-helper.git
-   cd student-homework-helper
+   git clone https://github.com/yourusername/prompts.git
+   cd prompts
    ```
 
 2. **Install dependencies**
@@ -42,15 +42,10 @@ An AI-powered FastAPI application that helps students with their Math, Physics, 
 
 4. **Run the application**
    ```bash
-   python main.py
+   uvicorn prompts:app --host 0.0.0.0 --port 8001 --reload
    ```
 
-   Or using uvicorn directly:
-   ```bash
-   uvicorn main:app --host 0.0.0.0 --port 8001 --reload
-   ```
-
-5. **Access the API**
+6. **Access the API**
    - API Documentation: `http://localhost:8001/docs`
    - Interactive API: `http://localhost:8001/redoc`
 
