@@ -244,6 +244,8 @@ async def get_conversation_history(subject: str, limit: int = 10):
     # Return most recent entries
     return {"subject": subject, "history": history[-limit:]}
 
+
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, port=8000)
