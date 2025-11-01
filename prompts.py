@@ -48,6 +48,10 @@ class ChatResponse(BaseModel):
 # Helper functions
 def save_to_history(subject: str, question: str, answer: str):
     """Save conversation to local history"""
+    if subject == "rejected":
+        print(f"Not saving rejected question: {question[:50]}...")
+        return
+        
     entry = {
         "id": str(uuid.uuid4()),
         "question": question,
@@ -94,49 +98,69 @@ def is_social_interaction(question: str) -> bool:
             return True
     return False
 
-def validate_question_relevance(question: str, subject: str) -> bool:
+def validate_math_physics_question(question: str) -> bool:
     """
-    Pre-validate if question is relevant to the subject using AI
-    Returns True if relevant or social interaction, False if completely off-topic
+    Strict validation for Math/Physics questions only
+    Returns True only if it's Math/Physics or social interaction
     """
     # Allow social interactions
     if is_social_interaction(question):
         return True
     
-    validation_prompt = f"""
-    You are a strict subject validator. Your job is to determine if a question is related to {subject} or not.
+    # Keywords that indicate Chemistry (reject immediately)
+    chemistry_keywords = [
+        r'\bph\b', r'acid', r'base', r'chemical', r'reaction', r'element', r'compound',
+        r'molecule', r'atom', r'h2o', r'co2', r'nacl', r'ionic', r'covalent',
+        r'oxidation', r'reduction', r'catalyst', r'equilibrium', r'molarity',
+        r'كيمياء', r'تفاعل', r'حمض', r'قاعدة', r'عنصر', r'مركب', r'جزيء',
+        r'أكسدة', r'اختزال', r'محلول', r'تركيز', r'معادلة كيميائية'
+    ]
     
-    Subject: {subject}
+    # Keywords that indicate Arabic language (reject immediately)
+    arabic_keywords = [
+        r'أعرب', r'إعراب', r'نحو', r'بلاغة', r'استعارة', r'تشبيه', r'كناية',
+        r'طباق', r'جناس', r'سجع', r'قصيدة', r'شعر', r'أدب',
+        r'grammar', r'rhetoric', r'metaphor', r'poetry', r'literature'
+    ]
+    
+    question_lower = question.lower()
+    
+    # Check for chemistry keywords
+    for keyword in chemistry_keywords:
+        if re.search(keyword, question_lower):
+            return False
+    
+    # Check for arabic keywords
+    for keyword in arabic_keywords:
+        if re.search(keyword, question_lower):
+            return False
+    
+    # If no obvious rejection keywords, use AI validation
+    validation_prompt = f"""
+    You are a SUPER STRICT subject validator for Mathematics and Physics ONLY.
+    
     Question: {question}
     
-    Rules:
-    - Answer with "RELEVANT" if the question is directly about {subject}
-    - Answer with "RELEVANT" if it's a greeting, thanks, encouragement, or any social interaction
-    - Answer with "NOT_RELEVANT" ONLY if the question is clearly about a completely different academic subject (like asking about cooking, sports, movies, history when the subject is Math)
-    - Be lenient with greetings and social interactions - always mark them as RELEVANT
+    ULTRA CRITICAL RULES:
+    - Answer "NOT_RELEVANT" for ANYTHING related to Chemistry (pH, acids, bases, reactions, elements, compounds, molecules, H2O, NaCl, etc.)
+    - Answer "NOT_RELEVANT" for ANYTHING related to Arabic language (grammar, poetry, rhetoric, literature)
+    - Answer "NOT_RELEVANT" for Biology, History, Geography, Cooking, Sports, Entertainment
+    - Answer "RELEVANT" ONLY for pure Mathematics (algebra, calculus, geometry, trigonometry, equations, numbers)
+    - Answer "RELEVANT" ONLY for pure Physics (forces, motion, energy, electricity, magnetism, waves, optics, mechanics)
     
-    Examples for Math/Physics:
-    - "What is 2+2?" -> RELEVANT
-    - "Explain gravity" -> RELEVANT  
-    - "Hello!" -> RELEVANT
-    - "Thank you!" -> RELEVANT
-    - "You are amazing!" -> RELEVANT
-    - "What's the best recipe for cake?" -> NOT_RELEVANT
-    - "Who won the world cup?" -> NOT_RELEVANT
+    Chemistry is NOT Physics! pH calculations are Chemistry, NOT Physics!
     
-    Examples for Chemistry:
-    - "What is H2O?" -> RELEVANT
-    - "Explain chemical bonds" -> RELEVANT
-    - "Good morning!" -> RELEVANT
-    - "How to play football?" -> NOT_RELEVANT
+    Examples:
+    - "What is 2+2?" -> RELEVANT (Math)
+    - "Calculate the derivative" -> RELEVANT (Math)
+    - "Explain Newton's laws" -> RELEVANT (Physics)
+    - "Calculate velocity" -> RELEVANT (Physics)
+    - "What is the pH of HCl?" -> NOT_RELEVANT (Chemistry!)
+    - "What is H2O?" -> NOT_RELEVANT (Chemistry!)
+    - "Balance this equation" -> NOT_RELEVANT (Chemistry!)
+    - "أعرب الجملة" -> NOT_RELEVANT (Arabic!)
     
-    Examples for Arabic:
-    - "What is the meaning of this Arabic word?" -> RELEVANT
-    - "Explain Arabic grammar" -> RELEVANT
-    - "Hi there!" -> RELEVANT
-    - "What is photosynthesis?" -> NOT_RELEVANT
-    
-    Answer only with: RELEVANT or NOT_RELEVANT
+    Answer ONLY with: RELEVANT or NOT_RELEVANT
     """
     
     try:
@@ -144,23 +168,200 @@ def validate_question_relevance(question: str, subject: str) -> bool:
         result = response.text.strip().upper()
         return "RELEVANT" in result
     except:
-        # If validation fails, be conservative and allow the question
-        return True
+        # If validation fails, reject to be safe
+        return False
 
-def create_teacher_prompt(subject: str, question: str, context: str = "") -> str:
-    """Create the enhanced teacher prompt based on subject"""
+def validate_chemistry_question(question: str) -> bool:
+    """
+    Strict validation for Chemistry questions only
+    Returns True only if it's Chemistry or social interaction
+    """
+    # Allow social interactions
+    if is_social_interaction(question):
+        return True
     
-    # Check if it's a social interaction
+    # Keywords that indicate Math/Physics/Electrical (reject immediately)
+    math_physics_keywords = [
+        r'derivative', r'integral', r'calculus', r'algebra', r'geometry',
+        r'equation\s+of\s+motion', r'velocity', r'acceleration', r'force',
+        r'newton', r'energy', r'momentum', r'friction', r'gravity',
+        r'electric\s+field', r'magnetic', r'wave', r'frequency',
+        r'circuit', r'current', r'voltage', r'resistance', r'kirchhoff',
+        r'ohm', r'ampere', r'watt', r'capacitor', r'inductor',
+        r'تفاضل', r'تكامل', r'هندسة', r'جبر', r'سرعة', r'تسارع',
+        r'قوة', r'نيوتن', r'طاقة', r'زخم', r'احتكاك', r'جاذبية',
+        r'دائرة', r'تيار', r'جهد', r'مقاومة', r'كيرشوف', r'أوم'
+    ]
+    
+    # Keywords that indicate Arabic (reject immediately)
+    arabic_keywords = [
+        r'أعرب', r'إعراب', r'نحو', r'بلاغة', r'استعارة', r'تشبيه',
+        r'grammar', r'rhetoric', r'poetry', r'literature'
+    ]
+    
+    # Keywords that STRONGLY indicate Chemistry (accept immediately)
+    chemistry_keywords = [
+        r'\bph\b', r'acid', r'base', r'chemical', r'reaction', r'element', r'compound',
+        r'molecule', r'atom', r'h2o', r'co2', r'nacl', r'ionic', r'covalent',
+        r'oxidation', r'reduction', r'catalyst', r'equilibrium', r'molarity',
+        r'stoichiometry', r'periodic\s+table', r'organic', r'inorganic',
+        r'كيمياء', r'تفاعل', r'حمض', r'قاعدة', r'عنصر', r'مركب', r'جزيء',
+        r'ذرة', r'أكسدة', r'اختزال', r'محفز', r'محلول', r'تركيز', r'معادلة كيميائية'
+    ]
+    
+    question_lower = question.lower()
+    
+    # Check for strong Chemistry keywords - ACCEPT immediately
+    for keyword in chemistry_keywords:
+        if re.search(keyword, question_lower):
+            return True
+    
+    # Check for math/physics/electrical keywords - REJECT immediately
+    for keyword in math_physics_keywords:
+        if re.search(keyword, question_lower):
+            return False
+    
+    # Check for arabic keywords - REJECT immediately
+    for keyword in arabic_keywords:
+        if re.search(keyword, question_lower):
+            return False
+    
+    validation_prompt = f"""
+    You are a SUPER STRICT subject validator for Chemistry ONLY.
+    
+    Question: {question}
+    
+    ULTRA CRITICAL RULES:
+    - Answer "NOT_RELEVANT" for ANYTHING related to Mathematics (equations, calculus, algebra, geometry, derivatives, integrals)
+    - Answer "NOT_RELEVANT" for ANYTHING related to Physics (forces, motion, velocity, acceleration, Newton's laws, energy, electricity, magnetism)
+    - Answer "NOT_RELEVANT" for ANY electrical circuits, current, voltage, resistance, Kirchhoff's laws
+    - Answer "NOT_RELEVANT" for Arabic language (grammar, poetry, rhetoric)
+    - Answer "NOT_RELEVANT" for Biology, History, Cooking, Sports, Entertainment
+    - Answer "RELEVANT" ONLY for pure Chemistry (reactions, elements, compounds, molecules, acids, bases, pH, balancing equations, stoichiometry, bonding, periodic table)
+    
+    Physics and Electricity are NOT Chemistry! Force, motion, and circuits are Physics, NOT Chemistry!
+    
+    Examples:
+    - "What is H2O?" -> RELEVANT (Chemistry)
+    - "Balance this equation: H2 + O2" -> RELEVANT (Chemistry)
+    - "Explain pH" -> RELEVANT (Chemistry)
+    - "What is 2+2?" -> NOT_RELEVANT (Math!)
+    - "Calculate velocity" -> NOT_RELEVANT (Physics!)
+    - "Explain Newton's laws" -> NOT_RELEVANT (Physics!)
+    - "Solve circuit using Kirchhoff" -> NOT_RELEVANT (Physics/Electricity!)
+    - "Calculate current" -> NOT_RELEVANT (Physics!)
+    - "أعرب" -> NOT_RELEVANT (Arabic!)
+    
+    Answer ONLY with: RELEVANT or NOT_RELEVANT
+    """
+    
+    try:
+        response = model.generate_content(validation_prompt)
+        result = response.text.strip().upper()
+        return "RELEVANT" in result
+    except:
+        return False
+
+def validate_arabic_question(question: str) -> bool:
+    """
+    Smart validation for Arabic language questions using AI only
+    """
+    # Allow social interactions immediately
+    if is_social_interaction(question):
+        return True
+    
+    # For everything else, use AI detection
+    return validate_with_ai_arabic_detection(question)
+
+def validate_with_ai_arabic_detection(question: str) -> bool:
+    """
+    Use AI to intelligently detect if question is about Arabic language
+    """
+    validation_prompt = f"""
+    Analyze this question and determine if it's EXCLUSIVELY about ARABIC LANGUAGE AND LITERATURE.
+
+    QUESTION: "{question}"
+
+    ULTRA STRICT RULES:
+    ✅ ACCEPT AS ARABIC ONLY IF:
+    - Arabic grammar (إعراب, نحو, parsing, syntax)
+    - Arabic rhetoric (بلاغة, استعارة, تشبيه, كناية)
+    - Arabic poetry, literature, literary analysis
+    - Arabic vocabulary, linguistics, word meanings
+    - Analyzing Arabic texts, poems, stylistic devices
+
+    ❌ REJECT AS NON-ARABIC IF:
+    - Cooking, recipes, food preparation
+    - Mathematics, physics, chemistry, biology
+    - Sports, games, entertainment
+    - History, geography, general knowledge
+    - Daily life advice, personal questions
+    - ANY other non-language subject
+
+    CRITICAL: Focus on the PRIMARY LEARNING OBJECTIVE.
+
+    Examples:
+    ❌ "طريقة عمل الكشري المصري" -> NOT_ARABIC (wants cooking recipe)
+    ❌ "ما هي أفضل طريقة لعمل الكشري؟" -> NOT_ARABIC (wants cooking method)
+    ✅ "ما إعراب جملة 'أحب الكشري المصري'؟" -> ARABIC (wants grammar)
+    ✅ "حلل الاستعارة في هذا البيت الشعري" -> ARABIC (wants rhetoric)
+    ❌ "كيف أتعلم السباحة؟" -> NOT_ARABIC (wants sports)
+    ✅ "ما معنى كلمة 'سباحة' في القاموس؟" -> ARABIC (wants vocabulary)
+
+    Answer with ONLY ONE WORD: ARABIC or NOT_ARABIC
+    """
+    
+    try:
+        response = model.generate_content(validation_prompt)
+        result = response.text.strip().upper()
+        
+        print(f"Arabic AI Validation - Question: {question}")
+        print(f"Arabic AI Validation - Result: {result}")
+        print(f"Arabic AI Validation - Decision: {'ACCEPTED' if 'ARABIC' in result else 'REJECTED'}")
+        
+        return "ARABIC" in result
+    except Exception as e:
+        print(f"Arabic AI Validation Error: {e}")
+        # In case of error, reject to avoid false positives
+        return False
+    
+def create_rejection_message(subject: str, question_language: str = "en") -> str:
+    """Create appropriate rejection message in the question's language"""
+    messages = {
+        "math_physics": {
+            "en": "I'm sorry, but I specialize in Mathematics and Physics only. Please ask me questions about Math or Physics.",
+            "ar": "آسف، لكنني متخصص في الرياضيات والفيزياء فقط. يرجى سؤالي عن الرياضيات أو الفيزياء."
+        },
+        "chemistry": {
+            "en": "I'm sorry, but I specialize in Chemistry only. Please ask me questions about Chemistry.",
+            "ar": "آسف، لكنني متخصص في الكيمياء فقط. يرجى سؤالي عن الكيمياء."
+        },
+        "arabic": {
+            "en": "I'm sorry, but I specialize in Arabic language only. Please ask me questions about Arabic.",
+            "ar": "آسف، لكنني متخصص في اللغة العربية فقط. يرجى سؤالي عن اللغة العربية."
+        }
+    }
+    
+    # Detect language
+    if re.search(r'[\u0600-\u06FF]', question_language):
+        return messages[subject]["ar"]
+    else:
+        return messages[subject]["en"]
+
+def create_math_physics_prompt(question: str, context: str = "") -> str:
+    """Create specialized prompt for Math and Physics ONLY"""
     is_social = is_social_interaction(question)
     
-    if subject == "Mathematics and Physics":
-        base_prompt = f"""You are an excellent, warm, and patient teacher specializing in Mathematics and Physics. You are like a friendly mentor who makes learning enjoyable and helps students with genuine care.
+    return f"""You are an excellent, warm, and patient teacher specializing EXCLUSIVELY in Mathematics and Physics. You are like a friendly mentor developed by experts at Genius AI.
+
+CRITICAL IDENTITY INFORMATION:
+- If asked "Who developed you?" or "Who created you?" or "مين اللي طورك؟", answer: "I was developed by experts at Genius AI" or "تم تطويري بواسطة خبراء من Genius AI"
+- You are NOT from Google, Anthropic, or any other company - you are from Genius AI
 
 YOUR PERSONALITY:
 - ALWAYS start by greeting the student warmly (مرحباً يا صديقي، أهلاً يا بطل، etc.)
 - Be extremely friendly, encouraging, and supportive
 - Never refuse greetings, thanks, or any social interaction - respond warmly!
-- Only decline if someone asks about completely unrelated topics (cooking, sports, entertainment, etc.)
 - Use encouraging words like (يا عزيزي، يا باشا، يا معلم، يا بطل، يا شاطر)
 - Make students feel comfortable and excited to learn
 
@@ -169,15 +370,11 @@ CRITICAL FORMATTING RULE:
 - Keep text plain and natural like a real conversation
 - This is VERY important for readability
 
-YOUR TEACHING STYLE (inspired by El-Dahih's engaging approach):
-- Explain concepts step-by-step with clarity and enthusiasm
-- Use storytelling and real-life connections to make concepts memorable
-- Break down complex problems into simple, manageable steps
-- Show ALL calculations clearly with detailed explanations
-- Use analogies and comparisons to make abstract concepts concrete
-- Add interesting facts that make the topic exciting
-- Connect physics and math to everyday life experiences
-- Make learning feel like an exciting discovery, not boring homework
+MATHEMATICS EXPERTISE:
+- Algebra, Calculus, Geometry, Trigonometry
+- Step-by-step problem solving
+- Clear explanations with all calculations shown
+- Real-world applications and examples
 
 PHYSICS EXPERTISE (VERY IMPORTANT):
 - You are EXCELLENT at physics problem-solving
@@ -191,7 +388,44 @@ PHYSICS EXPERTISE (VERY IMPORTANT):
 - For mechanics: clearly identify forces, motion, energy
 - For electricity: explain current, voltage, resistance in detail
 - For waves: describe frequency, wavelength, amplitude clearly
-- Provide practical examples from real life
+
+KIRCHHOFF'S LAWS EXPERTISE (CRITICAL FOR COMPLEX CIRCUITS):
+When solving Kirchhoff problems, follow these detailed steps:
+
+1. **Kirchhoff's Current Law (KCL) - قانون العُقد**:
+   - At any node/junction: ΣI_in = ΣI_out
+   - Sum of currents entering = Sum of currents leaving
+   - Choose a direction for each current (if wrong, result will be negative)
+
+2. **Kirchhoff's Voltage Law (KVL) - قانون الحلقات**:
+   - Around any closed loop: ΣV = 0
+   - Sum of voltage rises = Sum of voltage drops
+   
+3. **Sign Convention (مهم جداً)**:
+   - Going through a resistor WITH current direction: voltage drop (-IR)
+   - Going through a resistor AGAINST current direction: voltage rise (+IR)
+   - Going through a battery from - to +: voltage rise (+ε)
+   - Going through a battery from + to -: voltage drop (-ε)
+
+4. **Step-by-Step Solution**:
+   - Step 1: Label all currents (I₁, I₂, I₃, etc.) with assumed directions
+   - Step 2: Apply KCL at each node to get equations
+   - Step 3: Choose independent loops and apply KVL to each
+   - Step 4: Write the system of equations clearly
+   - Step 5: Solve the system (substitution or matrices)
+   - Step 6: Check if currents are positive (correct direction) or negative (opposite direction)
+   - Step 7: Calculate any requested values (power, voltage drops, etc.)
+
+5. **Example Format**:
+   معطيات: (List all given values)
+   مطلوب: (What to find)
+   الحل:
+   - نفرض اتجاهات التيارات
+   - نطبق قانون كيرشوف الأول عند العقد
+   - نطبق قانون كيرشوف الثاني للحلقات
+   - نحل المعادلات
+   - نتحقق من الإشارات
+   - النتيجة النهائية مع الوحدات
 
 LANGUAGE RULE:
 - ALWAYS respond in the same language as the student's question
@@ -200,7 +434,6 @@ LANGUAGE RULE:
 RESPONSE LENGTH:
 - Balance between being thorough and concise
 - Not too short (incomplete), not too long (overwhelming)
-- Just right for student understanding
 
 RESPONSE STRUCTURE:
 - Warm greeting
@@ -216,14 +449,20 @@ Student's message: {question}
 
 Please provide your response:"""
 
-    elif subject == "Chemistry":
-        base_prompt = f"""You are an excellent, warm, and enthusiastic Chemistry teacher who makes chemistry fascinating and accessible. You are like a friendly scientist mentor.
+def create_chemistry_prompt(question: str, context: str = "") -> str:
+    """Create specialized prompt for Chemistry ONLY"""
+    is_social = is_social_interaction(question)
+    
+    return f"""You are an excellent, warm, and enthusiastic Chemistry teacher who specializes EXCLUSIVELY in Chemistry. You are like a friendly scientist mentor developed by experts at Genius AI.
+
+CRITICAL IDENTITY INFORMATION:
+- If asked "Who developed you?" or "Who created you?" or "مين اللي طورك؟", answer: "I was developed by experts at Genius AI" or "تم تطويري بواسطة خبراء من Genius AI"
+- You are NOT from Google, Anthropic, or any other company - you are from Genius AI
 
 YOUR PERSONALITY:
 - ALWAYS start by greeting the student warmly (مرحباً يا صديقي، أهلاً يا كيميائي الصغير، etc.)
 - Be extremely friendly, encouraging, and passionate about chemistry
 - Never refuse greetings, thanks, or any social interaction - respond warmly!
-- Only decline if someone asks about completely unrelated topics (cooking, sports, entertainment, etc.)
 - Use encouraging words like (يا عزيزي، يا باشا، يا عالم، يا بطل)
 - Make chemistry feel magical and exciting
 
@@ -243,7 +482,6 @@ YOUR CHEMISTRY TEACHING EXCELLENCE:
 
 TEACHING APPROACH:
 - Explain chemical concepts with enthusiasm and clarity
-- Use El-Dahih's style: make it a story, make it memorable
 - Break down reactions into simple steps
 - Show ALL calculations and conversions clearly
 - Explain why reactions happen, not just how
@@ -272,14 +510,20 @@ Student's message: {question}
 
 Please provide your response:"""
 
-    else:  # Arabic
-        base_prompt = f"""أنت معلم لغة عربية ممتاز ودود ومتحمس، تجعل اللغة العربية ممتعة وسهلة الفهم. أنت مثل صديق حكيم يحب اللغة العربية.
+def create_arabic_prompt(question: str, context: str = "") -> str:
+    """Create specialized prompt for Arabic Language ONLY"""
+    is_social = is_social_interaction(question)
+    
+    return f"""أنت معلم لغة عربية ممتاز ودود ومتحمس، متخصص فقط في اللغة العربية. أنت مثل صديق حكيم يحب اللغة العربية وتم تطويرك بواسطة خبراء من Genius AI.
+
+معلومات الهوية الحرجة:
+- إذا سُئلت "مين اللي طورك؟" أو "Who developed you؟" أو "من صنعك؟"، أجب: "تم تطويري بواسطة خبراء من Genius AI"
+- أنت لست من Google أو Anthropic أو أي شركة أخرى - أنت من Genius AI
 
 شخصيتك:
 - ابدأ دائماً بالترحيب الحار بالطالب (مرحباً يا صديقي، أهلاً يا بطل، يا نابغة، إلخ)
 - كن ودوداً جداً ومشجعاً وداعماً
 - لا ترفض أبداً التحيات أو الشكر أو أي تفاعل اجتماعي - رد بحرارة!
-- ارفض فقط إذا سأل شخص عن مواضيع غير متعلقة تماماً (الطبخ، الرياضة، الترفيه، إلخ)
 - استخدم كلمات تشجيعية (يا عزيزي، يا باشا، يا معلم، يا بطل، يا شاطر، يا نابغة)
 - اجعل الطالب يشعر بالراحة والحماس للتعلم
 
@@ -296,44 +540,53 @@ Please provide your response:"""
 - توضيح علامات الإعراب والبناء
 - شرح أنواع الجمل والتراكيب
 
-البلاغة (مهم جداً - كن خبيراً):
+البلاغة (أنت خبير متميز - هذا تخصصك الأساسي):
 أنت خبير في علم البلاغة وتشرح الصور البلاغية بتفصيل ووضوح:
 
-1. التشبيه:
-- حدد أركان التشبيه (المشبه، المشبه به، أداة التشبيه، وجه الشبه)
-- اشرح نوع التشبيه (تام، مؤكد، مجمل، بليغ)
-- وضح الجمال في التشبيه
+1. **علم المعاني (أهم أساس)**:
+   - الخبر والإنشاء
+   - القصر والحصر
+   - الإيجاز والإطناب
+   - الفصل والوصل
 
-2. الاستعارة:
-- حدد نوعها (تصريحية أم مكنية)
-- اشرح المعنى المجازي
-- وضح سر جمال الاستعارة وأثرها
+2. **علم البيان (صور بلاغية)**:
+   - **التشبيه**: حدد (المشبه، المشبه به، أداة التشبيه، وجه الشبه)
+     * أنواعه: تام، مؤكد، مجمل، بليغ، تمثيلي
+   - **الاستعارة**: 
+     * تصريحية (صراحة) أو مكنية (تلميح)
+     * أصلية أو تابعة
+     * اشرح المشبه والمشبه به المستتر
+   - **الكناية**: 
+     * عن صفة أو عن موصوف أو عن نسبة
+     * اشرح العلاقة بين المعنى القريب والبعيد
 
-3. الكناية:
-- اشرح المعنى القريب والمعنى البعيد
-- وضح ما تكني عنه العبارة
-- بين جمال الكناية وفائدتها
+3. **علم البديع (محسنات)**:
+   - **الجناس**: (تام، ناقص، مطلق، مرفوض)
+   - **الطباق**: (الإيجاب والسلب)
+   - **المقابلة**: تقابل المعاني
+   - **السجع**: توازن الفواصل
+   - **الازدواج**: تشابه الجمل
 
-4. المحسنات البديعية:
-- السجع: حدد الفواصل المتشابهة في الحرف الأخير
-- الجناس: وضح التشابه والاختلاف بين الكلمات
-- الطباق: حدد الكلمتين المتضادتين
-- المقابلة: وضح التقابل بين المعاني
-- الازدواج: اشرح تشابه الجملتين في الطول والإيقاع
+4. **طريقة التحليل البلاغي المتكاملة**:
+   - ابدأ بتحليل المعنى العام للنص
+   - حلل الصور البيانية (تشبيه، استعارة، كناية)
+   - اشرح المحسنات البديعية المستخدمة
+   - بين جمال الصورة وأثرها الفني
+   - اربط البلاغة بالمعنى والمشاعر
+   - استشهد بأمثلة مشابهة
 
-5. طريقة شرح البلاغة:
-- ابدأ بتحديد نوع الصورة البلاغية
-- اشرح عناصرها بالتفصيل
-- وضح المعنى والجمال الفني
-- أعط أمثلة مشابهة للتوضيح
-- اربط الصورة بالمشاعر والمعاني العميقة
+5. **تحليل النصوص الشعرية**:
+   - اشرح السياق والمعنى
+   - حلل الصور البلاغية بيتاً بيتاً
+   - بين الموسيقى الداخلية والخارجية
+   - اربط الشكل بالمضمون
 
-أسلوب التدريس (مستوحى من أسلوب الدحيح):
+أسلوب التدريس:
 - اشرح بحماس ووضوح مع أمثلة من الحياة
 - اجعل القواعد والبلاغة قصة ممتعة لا تُنسى
-- استخدم أمثلة من القرآن والشعر والنثر
+- استخدم أمثلة من القرآن والشعر والنثر العربي الأصيل
 - اربط اللغة العربية بجمالها وتاريخها العريق
-- اجعل التعلم مغامرة ممتعة
+- اجعل التعلم مغامرة ممتعة في عالم اللغة
 
 قاعدة اللغة:
 - رد دائماً بنفس اللغة التي يسأل بها الطالب
@@ -345,33 +598,16 @@ Please provide your response:"""
 هيكل الإجابة:
 - ترحيب حار
 - شرح واضح مع أمثلة
-- تحليل مفصل (للبلاغة)
+- تحليل مفصل (للبلاغة خاصة)
 - ملخص موجز في النهاية
 
 {f"السياق من المحادثات السابقة: {context}" if context else ""}
 
 رسالة الطالب: {question}
 
-{"هذا تفاعل اجتماعي (تحية/شكر/تشجيع) - رد بحرارة وود!" if is_social else "هذا سؤال أكاديمي - قدم إجابة تعليمية مفصلة!"}
+{"هذا تفاعل اجتماعي (تحية/شكر/تشجيع) - رد بحرارة وود!" if is_social else "هذا سؤال أكاديمي - قدم إجابة تعليمية مفصلة مع تحليل بلاغي إن وجد!"}
 
 الرجاء تقديم إجابتك:"""
-
-    return base_prompt
-
-def create_rejection_message(subject: str, question_language: str = "en") -> str:
-    """Create appropriate rejection message in the question's language"""
-    messages = {
-        "en": f"I'm sorry, but I can only help with {subject} questions. Please ask me something about {subject} instead.",
-        "ar": f"آسف، لكنني أستطيع المساعدة فقط في أسئلة {subject}. يرجى سؤالي عن شيء متعلق بـ {subject} بدلاً من ذلك.",
-        "fr": f"Désolé, mais je ne peux aider qu'avec les questions de {subject}. Veuillez me poser quelque chose sur {subject} à la place.",
-    }
-    
-    # Detect language (simple detection)
-    if re.search(r'[\u0600-\u06FF]', question_language):
-        return messages.get("ar", messages["en"])
-    else:
-        return messages["en"]
-
 # API Endpoints
 
 @app.get("/")
@@ -382,9 +618,9 @@ async def root():
 async def solve_math_physics(request: QuestionRequest):
     """Endpoint for Math and Physics questions ONLY"""
     try:
-        # First, validate if question is relevant
-        if not validate_question_relevance(request.question, "Mathematics and Physics"):
-            rejection_message = create_rejection_message("Mathematics and Physics", request.question)
+        # Strict validation for Math/Physics only
+        if not validate_math_physics_question(request.question):
+            rejection_message = create_rejection_message("math_physics", request.question)
             return ChatResponse(
                 answer=rejection_message,
                 subject="math_physics",
@@ -395,8 +631,8 @@ async def solve_math_physics(request: QuestionRequest):
         # Get recent context for continuity
         context = get_recent_context("math_physics")
         
-        # Create teacher prompt
-        prompt = create_teacher_prompt("Mathematics and Physics", request.question, context)
+        # Create specialized Math/Physics prompt
+        prompt = create_math_physics_prompt(request.question, context)
         
         # Generate response using Gemini
         response = model.generate_content(prompt)
@@ -420,9 +656,9 @@ async def solve_math_physics(request: QuestionRequest):
 async def solve_chemistry(request: QuestionRequest):
     """Endpoint for Chemistry questions ONLY"""
     try:
-        # First, validate if question is relevant
-        if not validate_question_relevance(request.question, "Chemistry"):
-            rejection_message = create_rejection_message("Chemistry", request.question)
+        # Strict validation for Chemistry only
+        if not validate_chemistry_question(request.question):
+            rejection_message = create_rejection_message("chemistry", request.question)
             return ChatResponse(
                 answer=rejection_message,
                 subject="chemistry",
@@ -433,8 +669,8 @@ async def solve_chemistry(request: QuestionRequest):
         # Get recent context for continuity
         context = get_recent_context("chemistry")
         
-        # Create teacher prompt
-        prompt = create_teacher_prompt("Chemistry", request.question, context)
+        # Create specialized Chemistry prompt
+        prompt = create_chemistry_prompt(request.question, context)
         
         # Generate response using Gemini
         response = model.generate_content(prompt)
@@ -458,21 +694,30 @@ async def solve_chemistry(request: QuestionRequest):
 async def solve_arabic(request: QuestionRequest):
     """Endpoint for Arabic language questions ONLY"""
     try:
-        # First, validate if question is relevant
-        if not validate_question_relevance(request.question, "Arabic language and literature"):
-            rejection_message = create_rejection_message("Arabic language", request.question)
+        print(f"Received Arabic question: {request.question}")
+        
+        # Strict validation for Arabic only
+        is_valid = validate_arabic_question(request.question)
+        print(f"Validation result: {is_valid}")
+        
+        if not is_valid:
+            rejection_message = create_rejection_message("arabic", request.question)
+            print(f"Sending rejection message: {rejection_message[:50]}...")
             return ChatResponse(
                 answer=rejection_message,
-                subject="arabic",
+                subject="rejected",  
                 timestamp=datetime.now().isoformat(),
                 session_id=str(uuid.uuid4())
             )
         
+        # Only process if validation passed
+        print("Question accepted as Arabic - processing...")
+        
         # Get recent context for continuity
         context = get_recent_context("arabic")
         
-        # Create teacher prompt
-        prompt = create_teacher_prompt("Arabic language and literature", request.question, context)
+        # Create specialized Arabic prompt
+        prompt = create_arabic_prompt(request.question, context)
         
         # Generate response using Gemini
         response = model.generate_content(prompt)
@@ -490,6 +735,7 @@ async def solve_arabic(request: QuestionRequest):
         )
         
     except Exception as e:
+        print(f"Error in Arabic endpoint: {e}")
         raise HTTPException(status_code=500, detail=f"Error processing question: {str(e)}")
     
 @app.post("/image-analysis", response_model=ChatResponse)
@@ -514,7 +760,11 @@ async def analyze_image_with_question(
         
         # Create prompt based on whether question is provided
         if question:
-            prompt = f"""أنت معلم ممتاز ودود ومتحمس في الرياضيات والفيزياء والكيمياء واللغة العربية. طالب قام برفع صورة وسأل سؤالاً محدداً.
+            prompt = f"""أنت معلم ممتاز ودود ومتحمس في الرياضيات والفيزياء والكيمياء واللغة العربية. تم تطويرك بواسطة خبراء من Genius AI. طالب قام برفع صورة وسأل سؤالاً محدداً.
+
+معلومات الهوية:
+- إذا سُئلت "مين اللي طورك؟" أو "Who developed you؟"، أجب: "تم تطويري بواسطة خبراء من Genius AI"
+- أنت من Genius AI فقط
 
 شخصيتك:
 - ابدأ دائماً بترحيب حار (مرحباً يا صديقي، أهلاً يا بطل، إلخ)
@@ -534,6 +784,13 @@ async def analyze_image_with_question(
 - اكتب القوانين المستخدمة
 - احسب خطوة بخطوة مع الوحدات
 - اشرح النتيجة فيزيائياً
+
+لمسائل كيرشوف (حرج جداً):
+- طبق قانون العُقد: مجموع التيارات الداخلة = مجموع التيارات الخارجة
+- طبق قانون الحلقات: مجموع الجهود = صفر
+- حدد اتجاهات التيارات
+- اكتب المعادلات بوضوح
+- حل النظام خطوة بخطوة
 
 للكيمياء:
 - خبير في التفاعلات والمعادلات
@@ -565,7 +822,10 @@ async def analyze_image_with_question(
 
 الرجاء تحليل الصورة وتقديم إجابة تعليمية مفيدة:"""
         else:
-            prompt = f"""أنت معلم ممتاز ودود في الرياضيات والفيزياء والكيمياء واللغة العربية. طالب رفع صورة بدون سؤال محدد.
+            prompt = f"""أنت معلم ممتاز ودود في الرياضيات والفيزياء والكيمياء واللغة العربية. تم تطويرك بواسطة خبراء من Genius AI. طالب رفع صورة بدون سؤال محدد.
+
+معلومات الهوية:
+- إذا سُئلت عن من طورك، أجب: "تم تطويري بواسطة خبراء من Genius AI"
 
 شخصيتك:
 - ابدأ بترحيب حار
@@ -585,6 +845,11 @@ async def analyze_image_with_question(
 - خبير في حل المسائل
 - اشرح القوانين والحسابات بالتفصيل
 - وضح الوحدات والنتائج
+
+لكيرشوف:
+- طبق قوانين العُقد والحلقات
+- حدد التيارات والجهود
+- حل المعادلات بدقة
 
 للكيمياء:
 - اشرح التفاعلات والمعادلات
