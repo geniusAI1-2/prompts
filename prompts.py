@@ -305,8 +305,6 @@ def validate_with_ai_arabic_detection(question: str) -> bool:
     ❌ "ما هي أفضل طريقة لعمل الكشري؟" -> NOT_ARABIC (wants cooking method)
     ✅ "ما إعراب جملة 'أحب الكشري المصري'؟" -> ARABIC (wants grammar)
     ✅ "حلل الاستعارة في هذا البيت الشعري" -> ARABIC (wants rhetoric)
-    ❌ "كيف أتعلم السباحة؟" -> NOT_ARABIC (wants sports)
-    ✅ "ما معنى كلمة 'سباحة' في القاموس؟" -> ARABIC (wants vocabulary)
 
     Answer with ONLY ONE WORD: ARABIC or NOT_ARABIC
     """
@@ -317,9 +315,13 @@ def validate_with_ai_arabic_detection(question: str) -> bool:
         
         print(f"Arabic AI Validation - Question: {question}")
         print(f"Arabic AI Validation - Result: {result}")
-        print(f"Arabic AI Validation - Decision: {'ACCEPTED' if 'ARABIC' in result else 'REJECTED'}")
         
-        return "ARABIC" in result
+        # ⚡⚡⚡ التصحيح هنا! ⚡⚡⚡
+        is_arabic = (result == "ARABIC")
+        print(f"Arabic AI Validation - Decision: {'ACCEPTED' if is_arabic else 'REJECTED'}")
+        
+        return is_arabic
+        
     except Exception as e:
         print(f"Arabic AI Validation Error: {e}")
         # In case of error, reject to avoid false positives
@@ -905,7 +907,3 @@ async def get_conversation_history(subject: str, limit: int = 10):
     
     # Return most recent entries
     return {"subject": subject, "history": history[-limit:]}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
