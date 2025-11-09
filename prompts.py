@@ -897,6 +897,14 @@ async def analyze_image_with_question(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error analyzing image: {str(e)}")
 
+
+@app.get("/prompts/api/test")
+def test_keys():
+    return {"Hello Prompts File"}
+
+
+
+
 @app.get("/history/{subject}")
 async def get_conversation_history(subject: str, limit: int = 10):
     """Get conversation history for a specific subject"""
@@ -907,3 +915,4 @@ async def get_conversation_history(subject: str, limit: int = 10):
     
     # Return most recent entries
     return {"subject": subject, "history": history[-limit:]}
+
