@@ -14,6 +14,7 @@ import re
 # load_dotenv()
 load_dotenv("/var/www/promptsv2/.env")
 # Assign API key
+print("GEMINI_API_KEY:", os.getenv("GEMINI_API_KEY"))
 # os.getenv("GEMINI_API_KEY")
 
 # Optional: check if key loaded correctly
@@ -953,3 +954,4 @@ async def test_api_key():
 def test_key():
     key = os.getenv("GEMINI_API_KEY")
     return {"GEMINI_API_KEY": key if key else "Not loaded"}
+
