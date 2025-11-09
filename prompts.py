@@ -11,10 +11,10 @@ import re
 
 # Load environment variables
 # load_dotenv("/var/www/promptsv2/.env")
-load_dotenv()
-
+# load_dotenv()
+load_dotenv("/var/www/promptsv2/.env")
 # Assign API key
-# genai.api_key = os.getenv("GEMINI_API_KEY")
+# os.getenv("GEMINI_API_KEY")
 
 # Optional: check if key loaded correctly
 # if not genai.api_key:
@@ -946,3 +946,4 @@ async def test_api_key():
             return {"status": "failed", "code": response.status_code, "message": response.text}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
