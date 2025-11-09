@@ -19,7 +19,9 @@ load_dotenv("/var/www/promptsv2/.env")
 # Optional: check if key loaded correctly
 # if not genai.api_key:
 #     raise ValueError("GEMINI_API_KEY not found. Check your .env file!")
-    
+
+
+
 app = FastAPI(title="Student Homework Helper", description="AI-powered homework assistance for Math, Physics, Arabic and Chemistry")
 
 # CORS middleware
@@ -947,3 +949,7 @@ async def test_api_key():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+@app.get("/test-key")
+def test_key():
+    key = os.getenv("GEMINI_API_KEY")
+    return {"GEMINI_API_KEY": key if key else "Not loaded"}
