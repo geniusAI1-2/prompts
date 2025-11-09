@@ -928,30 +928,34 @@ async def get_conversation_history(subject: str, limit: int = 10):
     return {"subject": subject, "history": history[-limit:]}
 
 
-
-
-
-
 @app.get("/prompts/test-key")
-async def test_api_key():
-    api_key = os.getenv("OPENAI_API_KEY")  # or your provider key
+async def test_gemini_key():
+    api_key = os.getenv("GEMINI_API_KEY")  # now using your Gemini key
     if not api_key:
         raise HTTPException(status_code=500, detail="API key not found in .env")
 
-    # Example for OpenAI (replace if using another AI provider)
-    url = "https://api.openai.com/v1/models"
+    # Example request to Google Gemini API
+    url = "https://generativelanguage.googleapis.com/v1beta2/models"  # list models endpoint
     headers = {"Authorization": f"Bearer {api_key}"}
     try:
         response = requests.get(url, headers=headers)
         if response.status_code == 200:
-            return {"status": "success", "message": "API key is valid!"}
+            return {"status": "success", "message": "Gemini API key is valid!"}
         else:
-            return {"status": "failed", "code": response.status_code, "message": response.text}
+            return {
+                "status": "failed",
+                "code": response.status_code,
+                "message": response.text
+            }
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+
 
 @app.get("/test-key")
 def test_key():
     key = os.getenv("GEMINI_API_KEY")
     return {"GEMINI_API_KEY": key if key else "Not loaded"}
+
 
