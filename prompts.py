@@ -10,6 +10,7 @@ import uuid
 import re
 
 # Load environment variables
+load_dotenv("/var/www/promptsv2/.env")
 load_dotenv()
 
 app = FastAPI(title="Student Homework Helper", description="AI-powered homework assistance for Math, Physics, Arabic and Chemistry")
@@ -915,4 +916,5 @@ async def get_conversation_history(subject: str, limit: int = 10):
     
     # Return most recent entries
     return {"subject": subject, "history": history[-limit:]}
+
 
