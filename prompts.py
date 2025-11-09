@@ -11,7 +11,7 @@ import re
 
 # Load environment variables
 load_dotenv("/var/www/promptsv2/.env")
-load_dotenv()
+# load_dotenv()
 
 # Assign API key
 genai.api_key = os.getenv("GEMINI_API_KEY")
@@ -923,6 +923,7 @@ async def get_conversation_history(subject: str, limit: int = 10):
     
     # Return most recent entries
     return {"subject": subject, "history": history[-limit:]}
+
 
 
 
