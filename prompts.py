@@ -25,15 +25,18 @@ print("GEMINI_API_KEY:", os.getenv("GEMINI_API_KEY"))
 
 app = FastAPI(title="Student Homework Helper", description="AI-powered homework assistance for Math, Physics, Arabic and Chemistry")
 
-# CORS middleware
+origins = [
+    "http://82.112.253.252:8020",  # frontend URL
+    "http://127.0.0.1:8001"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,   # allow only these origins
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],     # allow GET, POST, PUT, DELETE, etc.
+    allow_headers=["*"],     # allow any headers
 )
-
 # Configure Gemini
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel('gemini-2.0-flash')
@@ -957,6 +960,7 @@ async def test_gemini_key():
 def test_key():
     key = os.getenv("GEMINI_API_KEY")
     return {"GEMINI_API_KEY": key if key else "Not loaded"}
+
 
 
 
