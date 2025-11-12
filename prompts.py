@@ -11,8 +11,8 @@ import re
 
 # Load environment variables
 # load_dotenv("/var/www/promptsv2/.env")
-# load_dotenv()
-load_dotenv("/var/www/promptsv2/.env")
+load_dotenv()
+# load_dotenv("/var/www/promptsv2/.env")
 # Assign API key
 print("GEMINI_API_KEY:", os.getenv("GEMINI_API_KEY"))
 # os.getenv("GEMINI_API_KEY")
@@ -957,5 +957,6 @@ async def test_gemini_key():
 def test_key():
     key = os.getenv("GEMINI_API_KEY")
     return {"GEMINI_API_KEY": key if key else "Not loaded"}
+
 
 
